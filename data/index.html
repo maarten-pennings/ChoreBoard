@@ -1,0 +1,109 @@
+<!DOCTYPE HTML>
+<HTML>
+  <HEAD>
+    <TITLE>ChoreBoard</TITLE>
+    <META name="viewport" content="width=device-width, initial-scale=1">
+    <LINK rel="stylesheet" type="text/css" href="style.css">
+    <SCRIPT>
+      var db_conf
+      function load_conf() {
+        var xmlhttp = new XMLHttpRequest();
+        var url = "conf.json";
+        xmlhttp.onreadystatechange = function() {
+          if( this.readyState==4 && this.status==200 ) {
+            // Put in global
+            data = this.responseText
+            //console.log("db_conf",data)
+            db_conf = JSON.parse(data);
+            // Show in div
+            //let out_conf= ""
+            //for( let key in db_conf ) out_conf += key+"="+db_conf[key]+" "
+            //document.getElementById("conf").innerHTML = out_conf;
+            if( db_log!=undefined ) show()
+          }
+        };
+        xmlhttp.open("GET", url, true);
+        xmlhttp.send();
+
+      }
+
+      var db_log
+      function load_log() {
+        var xmlhttp = new XMLHttpRequest();
+        var url = "log.json";
+        xmlhttp.onreadystatechange = function() {
+          if( this.readyState==4 && this.status==200 ) {
+            // Put in global
+            data = "["+this.responseText+"]"
+            //console.log("db_log",data)
+            db_log = JSON.parse(data);
+            // Show in div
+            //let out_log= ""
+            //for( let record of db_log ) out_log += record["time"]+"/"+record["name"]+"/"+record["delta"]+"</br>"
+            //document.getElementById("log").innerHTML = out_log;
+            if( db_conf!=undefined ) show()
+          }
+        };
+        xmlhttp.open("GET", url, true);
+        xmlhttp.send();
+
+      }
+
+      function plusone(name) {
+        console.log(name)
+        window.open("index.html?name="+name+"&delta=1","_self")
+      }
+      
+      function format3(num) {
+        let nbsp='\xA0'
+        return (num+nbsp+nbsp+nbsp).slice(0,3)
+      }
+      
+      function format12(str) {
+        let nbsp='\xA0'
+        let nbsp4=nbsp+nbsp+nbsp+nbsp
+        return (str+nbsp4+nbsp4+nbsp4+nbsp4).slice(0,15)
+      }
+      
+      function show() {
+        // Show log
+        let cursor = db_conf
+        let out = ""
+        for( let record of db_log ) {
+          cursor[record["name"]] += record["delta"]
+          let names = ""
+          for( let key in cursor ) names += " "+key+"="+format3(cursor[key])
+          let delta = "[" + record["name"] + " " + (record["delta"]>0?"+":"") + record["delta"] +"]"
+          if( record["delta"]==0 ) delta="" // 0 delta no shown (first one)
+          let time = ""+record["time"]
+          let logline = time.slice(0,8) + " "+ time.slice(8,14)+ ":" + names + format12(delta)
+          out = '<DIV class="record">' + logline + '</DIV>\n' + out
+        }
+        document.getElementById("log").innerHTML = out;
+        // Show status
+        let names = ""
+        for( let key in cursor ) names += "<SPAN onclick=\"plusone('"+key+"')\" class=\"plusone\">"+key+" "+cursor[key]+"&#10132;"+(cursor[key]+1)+"</SPAN>\n"
+        document.getElementById("status").innerHTML = names;
+      }
+      
+      function load() {
+        load_conf();
+        load_log();
+      }
+    </SCRIPT>
+  </HEAD>
+  <BODY onload="load()">
+    <H1>ChoreBoard</H1>
+    <P class="message">%MSG%</P>
+    <DIV id="status">
+      <SPAN class="plusone" onclick="window.open('conf.json')">... 0➔1</SPAN>
+    </DIV>
+    <P>&#9866; history &#9866;</P>
+    <DIV id="log"><DIV class="record">...log...</DIV></DIV>
+    <P>
+      <A class="link" HREF="conf.json">conf</A>
+      <A class="link" HREF="log.json">log</A>
+      <A class="link" HREF="reset.html">reset</A>
+    </P>
+  </BODY>
+</HTML>

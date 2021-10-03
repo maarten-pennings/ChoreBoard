@@ -1,0 +1,68 @@
+html {
+  font-family: Arial;
+  background-color: #80A0C0; 
+  display: inline-block;
+  margin: 0px auto;
+  text-align: center;
+}
+
+H1 {
+  font-size: 20px;
+}
+
+.message {
+  background-color: #b30000;
+}
+
+/* reset */
+.ival {
+  width: 2em;
+}
+
+.name {
+  width: 6em;
+}
+
+input {
+  background-color: #B0C0E0; 
+  border : none;
+  margin: 2px;
+}
+
+.plusone {
+  display: inline-block;
+  width: 7em;
+  padding: 1ex 0.2ex 1ex 0.2ex;
+  background-color: #B0C0E0; 
+  border: 1px solid black;
+  border-radius: 8px;
+  margin: 0.2ex;
+}
+
+.button {
+  display: inline-block;
+  background-color: #b30000; 
+  border-radius: 8px;
+  color: white;
+  padding: 8px 10px;
+  text-decoration: none;
+  font-size: 20px;
+  margin: 4px;
+  cursor: pointer;
+}
+
+.link {
+  display: inline-block;
+  text-decoration: none;
+  background-color: #405060; 
+  border-radius: 8px;
+  font-size: 12px;
+  width: 5em;
+  color: white;
+}
+
+.record {
+  font-family: courier;
+  font-size: 12px;
+}
+
