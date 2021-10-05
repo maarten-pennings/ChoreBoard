@@ -7,46 +7,34 @@
     <SCRIPT>
       var db_conf
       function load_conf() {
-        var xmlhttp = new XMLHttpRequest();
-        var url = "conf.json";
+        let xmlhttp = new XMLHttpRequest();
         xmlhttp.onreadystatechange = function() {
           if( this.readyState==4 && this.status==200 ) {
-            // Put in global
+            // Write to global var db_conf
             data = this.responseText
             //console.log("db_conf",data)
             db_conf = JSON.parse(data);
-            // Show in div
-            //let out_conf= ""
-            //for( let key in db_conf ) out_conf += key+"="+db_conf[key]+" "
-            //document.getElementById("conf").innerHTML = out_conf;
             if( db_log!=undefined ) show()
           }
         };
-        xmlhttp.open("GET", url, true);
+        xmlhttp.open("GET", "conf.json", true);
         xmlhttp.send();
-
       }
 
       var db_log
       function load_log() {
-        var xmlhttp = new XMLHttpRequest();
-        var url = "log.json";
+        let xmlhttp = new XMLHttpRequest();
         xmlhttp.onreadystatechange = function() {
           if( this.readyState==4 && this.status==200 ) {
-            // Put in global
+            // Write to global var db_log
             data = "["+this.responseText+"]"
             //console.log("db_log",data)
             db_log = JSON.parse(data);
-            // Show in div
-            //let out_log= ""
-            //for( let record of db_log ) out_log += record["time"]+"/"+record["name"]+"/"+record["delta"]+"</br>"
-            //document.getElementById("log").innerHTML = out_log;
             if( db_conf!=undefined ) show()
           }
         };
-        xmlhttp.open("GET", url, true);
+        xmlhttp.open("GET", "log.json", true);
         xmlhttp.send();
-
       }
 
       function plusone(name) {
@@ -54,41 +42,55 @@
         window.open("index.html?name="+name+"&delta=1","_self")
       }
       
-      function format3(num) {
-        let nbsp='\xA0'
-        return (num+nbsp+nbsp+nbsp).slice(0,3)
-      }
-      
-      function format12(str) {
-        let nbsp='\xA0'
-        let nbsp4=nbsp+nbsp+nbsp+nbsp
-        return (str+nbsp4+nbsp4+nbsp4+nbsp4).slice(0,15)
+      function format(str,len) {
+        let nbsp = '\xA0'
+        let nbsp6 = nbsp+nbsp+nbsp+nbsp+nbsp+nbsp
+        if( str.length > len ) return str
+        return (str+nbsp6+nbsp6+nbsp6+nbsp6+nbsp6+nbsp6).slice(0,len)
       }
       
       function show() {
-        // Show log
+        // Cursor starts with conf, is updated with each log record, and added to logstring
+        let logstring = ""
         let cursor = db_conf
-        let out = ""
         for( let record of db_log ) {
-          cursor[record["name"]] += record["delta"]
-          let names = ""
-          for( let key in cursor ) names += " "+key+"="+format3(cursor[key])
-          let delta = "[" + record["name"] + " " + (record["delta"]>0?"+":"") + record["delta"] +"]"
-          if( record["delta"]==0 ) delta="" // 0 delta no shown (first one)
-          let time = ""+record["time"]
-          let logline = time.slice(0,8) + " "+ time.slice(8,14)+ ":" + names + format12(delta)
-          out = '<DIV class="record">' + logline + '</DIV>\n' + out
+          // Update cursor with log record
+          if( record["name"] in cursor ) cursor[record["name"]] += record["delta"]
+          // Time (len=15)
+          let time = "" + record["time"]
+          time = time.slice(0,8) + " " + time.slice(8,14)
+          // Delta (len=13)
+          let delta = record["name"] + " " + (record["delta"]>0?"+":"") + record["delta"] // 8+1+1+3
+          delta = format(delta,13) 
+          // Status per name
+          let names_long = ""
+          let names_short= ""
+          for( let key in cursor ) {
+            names_short += " " + format(cursor[key],3)
+            names_long += " " + key + "=" + cursor[key]
+          }
+          names_short = format(names_short,5*4) // len=20
+          names_long =  format(names_long,35) // len=5*(1+8+1+3)=5*13=65 but cut to 35
+          // Assemble (different first line)
+          let logline = time + names_short + "[" + delta + "]" // 15+20+1+13+1 = 50
+          if( logstring=="" ) logline = time + names_long // 15+35 = 50
+          logstring = '<DIV class="record">' + logline + '</DIV>\n' + logstring
         }
-        document.getElementById("log").innerHTML = out;
-        // Show status
+        document.getElementById("log").innerHTML = logstring;
+        // Show status/button
         let names = ""
-        for( let key in cursor ) names += "<SPAN onclick=\"plusone('"+key+"')\" class=\"plusone\">"+key+" "+cursor[key]+"&#10132;"+(cursor[key]+1)+"</SPAN>\n"
+        for( let key in cursor ) names += "<SPAN onclick=\"plusone('" + key + "')\" class=\"plusone\">" + key + " " + cursor[key] + "</SPAN>\n"
         document.getElementById("status").innerHTML = names;
       }
       
+      function wipe_get_params() {
+        window.history.replaceState({}, document.title, "/index.html")
+      }
+
       function load() {
-        load_conf();
-        load_log();
+        wipe_get_params()
+        load_conf()
+        load_log()
       }
     </SCRIPT>
   </HEAD>
@@ -96,14 +98,16 @@
     <H1>ChoreBoard</H1>
     <P class="message">%MSG%</P>
     <DIV id="status">
-      <SPAN class="plusone" onclick="window.open('conf.json')">... 0➔1</SPAN>
+      <SPAN class="plusone" onclick="window.open('conf.json')">...name...</SPAN>
     </DIV>
-    <P>&#9866; history &#9866;</P>
-    <DIV id="log"><DIV class="record">...log...</DIV></DIV>
+    <DIV class="instruction">press a button for +1</DIV>
+    <P>&mdash; &mdash; log per %TIME% &mdash; &mdash;</P>
+    <DIV id="log"><DIV class="record">...log-record...</DIV></DIV>
     <P>
       <A class="link" HREF="conf.json">conf</A>
       <A class="link" HREF="log.json">log</A>
-      <A class="link" HREF="reset.html">reset</A>
+      <A class="link" HREF="setup.html">setup</A>
+      <A class="link" HREF="index.html">board</A>
     </P>
   </BODY>
 </HTML>

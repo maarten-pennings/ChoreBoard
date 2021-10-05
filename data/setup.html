@@ -1,0 +1,52 @@
+<!DOCTYPE HTML>
+<HTML>
+  <HEAD>
+    <TITLE>ChoreBoard</TITLE>
+    <META name="viewport" content="width=device-width, initial-scale=1">
+    <LINK rel="stylesheet" type="text/css" href="style.css">
+    <SCRIPT>
+      function wipe_get_params() {
+        window.history.replaceState({}, document.title, "/setup.html")
+      }
+    </SCRIPT>
+  </HEAD>
+  <BODY onload="wipe_get_params()">
+    <H1>Setup</H1>
+    <P class="message">%MSG%</P>
+    <DIV class="instruction">Define the names of the chore doers and their initial chore count.</DIV>
+    <FORM>
+      <LABEL for="name1">Person 1 </LABEL>
+      <INPUT class="name" title="person's name" type="text" id="name1" name="name1" value="name1">
+      <INPUT class="ival" title="start value"   type="text" id="ival1" name="ival1" value="0">
+      </BR>
+      
+      <LABEL for="name2">Person 2 </LABEL>
+      <INPUT class="name" title="person's name" type="text" id="name2" name="name2" value="name2">
+      <INPUT class="ival" title="start value"   type="text" id="ival2" name="ival2" value="0">
+      </BR>
+
+      <LABEL for="name3">Person 3 </LABEL>
+      <INPUT class="name" title="person's name" type="text" id="name3" name="name3" value="name3">
+      <INPUT class="ival" title="start value"   type="text" id="ival3" name="ival3" value="0">
+      </BR>
+
+      <LABEL for="name4">Person 4 </LABEL>
+      <INPUT class="name" title="person's name" type="text" id="name4" name="name4" value="">
+      <INPUT class="ival" title="start value"   type="text" id="ival4" name="ival4" value="0">
+      </BR>
+
+      <LABEL for="name5">Person 5 </LABEL>
+      <INPUT class="name" title="person's name" type="text" id="name5" name="name5" value="">
+      <INPUT class="ival" title="start value"   type="text" id="ival5" name="ival5" value="0">
+      </BR>
+
+      <INPUT class="button" type="submit" value="Clear log and restart">
+    </FORM>
+    <P>
+      <A class="link" HREF="conf.json">conf</A>
+      <A class="link" HREF="log.json">log</A>
+      <A class="link" HREF="setup.html">setup</A>
+      <A class="link" HREF="index.html">board</A>
+    </P>
+  </BODY>
+</HTML>

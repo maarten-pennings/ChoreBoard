@@ -3,7 +3,7 @@
 //   https://arduino-esp8266.readthedocs.io/en/latest/filesystem.html
 //   https://microcontrollerslab.com/esp8266-nodemcu-web-server-using-littlefs-flash-file-system/
 //   https://github.com/me-no-dev/ESPAsyncWebServer#request-variables
-#define APP_VERSION "v1"
+#define APP_VERSION "v2"
 #define APP_NAME    "ChoreBoard"
 
 
@@ -71,12 +71,22 @@ void time_setup() {
 }
 
 char * time_get() {
-  static char buf[4+2+2+1+2+2+2+1];
+  static char buf[4+2+2 + 2+2+2 +1];
   time_t      tnow= time(NULL);       // Returns seconds (and writes to the passed pointer, when not NULL) - note `time_t` is just a `long`.
   struct tm * snow= localtime(&tnow); // Returns a struct with time fields (https://www.tutorialspoint.com/c_standard_library/c_function_localtime.htm)
 
   // In `snow` the `tm_year` field is 1900 based, `tm_month` is 0 based, rest is as expected
   snprintf(buf,sizeof(buf),"%04d%02d%02d%02d%02d%02d", snow->tm_year + 1900, snow->tm_mon + 1, snow->tm_mday, snow->tm_hour, snow->tm_min, snow->tm_sec );
+  return buf;
+}
+
+char * time_get_nice() {
+  static char buf[4+1+2+1+2 +1+ 2+1+2+1+2 +1];
+  time_t      tnow= time(NULL);       // Returns seconds (and writes to the passed pointer, when not NULL) - note `time_t` is just a `long`.
+  struct tm * snow= localtime(&tnow); // Returns a struct with time fields (https://www.tutorialspoint.com/c_standard_library/c_function_localtime.htm)
+
+  // In `snow` the `tm_year` field is 1900 based, `tm_month` is 0 based, rest is as expected
+  snprintf(buf,sizeof(buf),"%04d-%02d-%02d %02d:%02d:%02d", snow->tm_year + 1900, snow->tm_mon + 1, snow->tm_mday, snow->tm_hour, snow->tm_min, snow->tm_sec );
   return buf;
 }
 
@@ -164,6 +174,8 @@ void file_read() {
 
 // Webserver ==========================================================
 
+#define HTTP_MAXNAMELEN 8 // Warning: duplicated in assignments to http_msg
+
 #include <ESPAsyncTCP.h>
 #include <ESPAsyncWebServer.h>
 AsyncWebServer http_server(80);
@@ -171,9 +183,8 @@ AsyncWebServer http_server(80);
 // Replaces placeholders
 String http_msg;
 String processor(const String& var){
-  if( var=="MSG"){
-    return http_msg;
-  }
+  if( var=="MSG"){ return http_msg; }
+  if( var=="TIME"){ return String(time_get_nice()); }
   return String();
 }
 
@@ -182,6 +193,7 @@ bool http_nameexists( const char * name ) {
 }
 
 bool http_nameok( const char * name ) {
+  if( strlen(name)>HTTP_MAXNAMELEN ) return false;
   while( *name!='\0' ) {
     if( ! isalnum(*name) ) return false;
     name++;
@@ -279,97 +291,96 @@ void http_setup() {
 
   });
   
-  http_server.on("/reset.html", HTTP_GET, [](AsyncWebServerRequest *request){
-    Serial.printf("http: GET /reset.html\n");
+  http_server.on("/setup.html", HTTP_GET, [](AsyncWebServerRequest *request){
+    http_msg = "";
+    Serial.printf("http: GET /setup.html\n");
     if( ! request->hasParam("name1") ) { // request without args
-      http_msg = "";
-      request->send(LittleFS, "/reset.html", String(), false, processor);
+      request->send(LittleFS, "/setup.html", String(), false, processor);
       return;
     }
   
+    if( !but_read() ) http_msg = "security error: IO0 button on server needs to be pressed during 'setup'";
+
     AsyncWebParameter *name1, *ival1, *name2, *ival2, *name3, *ival3, *name4, *ival4, *name5, *ival5;
-    http_msg = "";
   
     if(request->hasParam("name1")) {
       name1 = request->getParam("name1");
-      if( !http_nameok(name1->value().c_str()) ) http_msg = "name1 must be alpha numeric";
+      if( !http_nameok(name1->value().c_str()) ) http_msg = "Person 1 name must be alpha numeric (and max 8 chars)";
     }
     if(request->hasParam("ival1")) {
       ival1 = request->getParam("ival1");
-      if( !http_ivalok(ival1->value().c_str()) ) http_msg = "ival1 must be numeric";
+      if( !http_ivalok(ival1->value().c_str()) ) http_msg = "Person 1 start value must be numeric";
     }
     if( name1->value().length()==0 ) {
-      http_msg = "name1 can not be empty";
+      http_msg = "Person 1 name can not be empty";
     }
     
     if(request->hasParam("name2")) {
       name2 = request->getParam("name2");
-      if( !http_nameok(name2->value().c_str()) ) http_msg = "name2 must be alpha numeric";
-      if( strcmp(name1->value().c_str(),name2->value().c_str())==0 ) http_msg = "name2 may not be the same as name1";
+      if( !http_nameok(name2->value().c_str()) ) http_msg = "Person 2 name must be alpha numeric (and max 8 chars)";
+      if( strcmp(name1->value().c_str(),name2->value().c_str())==0 ) http_msg = "Person 2 and 1 can not have same name";
     }
     if(request->hasParam("ival2")) {
       ival2 = request->getParam("ival2");
-      if( !http_ivalok(ival2->value().c_str()) ) http_msg = "ival2 must be numeric";
+      if( !http_ivalok(ival2->value().c_str()) ) http_msg = "Person 2 start value must be numeric";
     }
     if( name2->value().length()==0 ) {
-      http_msg = "name1 can not be empty";
+      http_msg = "Person 2 name can not be empty";
     }
     int count = 2;
   
     if(request->hasParam("name3")) {
       name3 = request->getParam("name3");
-      if( !http_nameok(name3->value().c_str()) ) http_msg = "name3 must be alpha numeric";
+      if( !http_nameok(name3->value().c_str()) ) http_msg = "Person 3 name must be alpha numeric (and max 8 chars)";
     }
     if(request->hasParam("ival3")) {
       ival3 = request->getParam("ival3");
-      if( !http_ivalok(ival3->value().c_str()) ) http_msg = "ival3 must be numeric";
-      if( strcmp(name1->value().c_str(),name3->value().c_str())==0 ) http_msg = "name3 may not be the same as name1";
-      if( strcmp(name2->value().c_str(),name3->value().c_str())==0 ) http_msg = "name3 may not be the same as name2";
+      if( !http_ivalok(ival3->value().c_str()) ) http_msg = "Person 3 start value must be numeric";
+      if( strcmp(name1->value().c_str(),name3->value().c_str())==0 ) http_msg = "Person 3 and 1 can not have same name";
+      if( strcmp(name2->value().c_str(),name3->value().c_str())==0 ) http_msg = "Person 3 and 2 can not have same name";
     }
     if( name3->value().length()>0 ) count = 3;
   
     if(request->hasParam("name4")) {
       name4 = request->getParam("name4");
-      if( !http_nameok(name4->value().c_str()) ) http_msg = "name4 must be alpha numeric";
+      if( !http_nameok(name4->value().c_str()) ) http_msg = "Person 4 name must be alpha numeric (and max 8 chars)";
     }
     if(request->hasParam("ival4")) {
       ival4 = request->getParam("ival4");
-      if( !http_ivalok(ival4->value().c_str()) ) http_msg = "ival4 must be numeric";
+      if( !http_ivalok(ival4->value().c_str()) ) http_msg = "Person 4 start value must be numeric";
     }
     if( name4->value().length()>0 ) {
-      if( count!=3 ) http_msg = "name4 assigned, but name3 is empty";
+      if( count!=3 ) http_msg = "Person 4 name assigned, but person 3 name is empty";
       else {
-        if( strcmp(name1->value().c_str(),name4->value().c_str())==0 ) http_msg = "name4 may not be the same as name1";
-        if( strcmp(name2->value().c_str(),name4->value().c_str())==0 ) http_msg = "name4 may not be the same as name2";
-        if( strcmp(name3->value().c_str(),name4->value().c_str())==0 ) http_msg = "name4 may not be the same as name3";
+        if( strcmp(name1->value().c_str(),name4->value().c_str())==0 ) http_msg = "Person 4 and 1 can not have same name";
+        if( strcmp(name2->value().c_str(),name4->value().c_str())==0 ) http_msg = "Person 4 and 2 can not have same name";
+        if( strcmp(name3->value().c_str(),name4->value().c_str())==0 ) http_msg = "Person 4 and 3 can not have same name";
         count = 4;
       }
     }
   
     if(request->hasParam("name5")) {
       name5 = request->getParam("name5");
-      if( !http_nameok(name5->value().c_str()) ) http_msg = "name5 must be alpha numeric";
+      if( !http_nameok(name5->value().c_str()) ) http_msg = "Person 5 name must be alpha numeric (and max 8 chars)";
     }
     if(request->hasParam("ival5")) {
       ival5 = request->getParam("ival5");
-      if( !http_ivalok(ival5->value().c_str()) ) http_msg = "ival5 must be numeric";
+      if( !http_ivalok(ival5->value().c_str()) ) http_msg = "Person 5 start value must be numeric";
     }
     if( name5->value().length()>0 ) {
-      if( count!=4 ) http_msg = "name5 assigned, but name4 is empty";
+      if( count!=4 ) http_msg = "Person 5 name assigned, but person 4 name is empty";
       else {
-        if( strcmp(name1->value().c_str(),name5->value().c_str())==0 ) http_msg = "name5 may not be the same as name1";
-        if( strcmp(name2->value().c_str(),name5->value().c_str())==0 ) http_msg = "name5 may not be the same as name2";
-        if( strcmp(name3->value().c_str(),name5->value().c_str())==0 ) http_msg = "name5 may not be the same as name3";
-        if( strcmp(name4->value().c_str(),name5->value().c_str())==0 ) http_msg = "name5 may not be the same as name4";
+        if( strcmp(name1->value().c_str(),name5->value().c_str())==0 ) http_msg = "Person 5 and 1 can not have same name";
+        if( strcmp(name2->value().c_str(),name5->value().c_str())==0 ) http_msg = "Person 5 and 2 can not have same name";
+        if( strcmp(name3->value().c_str(),name5->value().c_str())==0 ) http_msg = "Person 5 and 3 can not have same name";
+        if( strcmp(name4->value().c_str(),name5->value().c_str())==0 ) http_msg = "Person 5 and 4 can not have same name";
         count = 5;
       }
     }
   
-    if( !but_read() ) http_msg = "security error: counters reset needs IO0 button on server to be pressed";
-
     if( http_msg!="" ) { // There was an error
       Serial.printf("http: %s\n", http_msg.c_str());
-      request->send(LittleFS, "/reset.html", String(), false, processor);
+      request->send(LittleFS, "/setup.html", String(), false, processor);
       return;
     }
   
@@ -386,7 +397,7 @@ void http_setup() {
       conf.printf("}\n");
       conf.close();
     }
-    // Reset the log (all transactions)
+    // Reset the log (all transactions) - write record (with delta=0) to have a time stamp
     File log = LittleFS.open("/log.json", "w");
     if( !log ) {
       http_msg = "writing /log.json failed";
@@ -397,13 +408,13 @@ void http_setup() {
     
     if( http_msg!="" ) { // There was an error
       Serial.printf("http: %s\n", http_msg.c_str());
-      request->send(LittleFS, "/reset.html", String(), false, processor);
+      request->send(LittleFS, "/setup.html", String(), false, processor);
       return;
     }
   
     Serial.printf("http: reset (%d users)\n",count);
     http_msg = "Reset performed";
-    request->send(LittleFS, "/reset.html", String(), false, processor);
+    request->send(LittleFS, "/index.html", String(), false, processor);
   } );
 
   // Start server
@@ -430,3 +441,8 @@ void setup() {
 
 void loop() {
 }
+
+// todo
+//  - in setup read conf, to check on names for +1
+//  - cookie with name
+//  - graph of chores
